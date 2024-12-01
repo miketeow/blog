@@ -1,0 +1,140 @@
+---
+title: "Introduction to MDX"
+summary: "MDX is a format that lets you write JSX embedded inside of markdown syntax."
+author: "mike"
+publishedAt: "2022-08-01"
+---
+
+# Introduction to MDX
+
+MDX is a format that lets you write JSX embedded inside of markdown syntax. It's often used for blogs and documentation, but can also be used for websites like this one.
+
+## How to use MDX
+
+To use MDX, you need to import the `mdx` package and the `MDXComponents` object.
+
+```tsx
+import { mdx } from "@mdx-js/runtime";
+
+import { MDXComponents } from "@/components/mdx-components";
+
+export const metadata = {
+  title: "Introduction to MDX",
+  description:
+    "MDX is a format that lets you write JSX embedded inside of markdown syntax.",
+};
+
+export default function Page() {
+  return (
+    <div>
+      <h1>Hello world!</h1>
+    </div>
+  );
+}
+
+export const config = {
+  runtime: "edge",
+};
+
+export const Content = () => {
+  return (
+    <MDXLayoutRenderer
+      layout={MDXComponents.CustomLayout}
+      components={MDXComponents}
+      mdxSource={source}
+    />
+  );
+};
+```
+
+You can now use JSX components inside of your markdown content. Here's an example:
+
+```tsx
+import { MDXComponents } from "@/components/mdx-components";
+
+export const Content = () => {
+  return (
+    <MDXLayoutRenderer
+      layout={MDXComponents.CustomLayout}
+      components={MDXComponents}
+      mdxSource={`
+# Hello world!
+
+This is an example of JSX embedded inside of markdown.
+
+<div style={{ color: "tomato" }}>This is a tomato!</div>
+`}
+    />
+  );
+};
+```
+
+You can also import components directly from your project. Here's an example:
+
+```tsx
+import { MDXComponents } from "@/components/mdx-components";
+
+export const Content = () => {
+  return (
+    <MDXLayoutRenderer
+      layout={MDXComponents.CustomLayout}
+      components={MDXComponents}
+      mdxSource={`
+# Hello world!
+
+This is an example of JSX embedded inside of markdown.
+
+<MyComponent />
+`}
+    />
+  );
+};
+```
+
+## Custom layouts
+
+By default, MDX pages use the `MDXLayout` component to render the content. You can import this component from `@/components/mdx-components` and use it as the layout for your MDX pages.
+
+```tsx
+import { MDXLayout } from "@/components/mdx-components";
+
+export const Content = () => {
+  return (
+    <MDXLayout
+      mdxSource={source}
+      components={MDXComponents}
+      layout={MDXComponents.CustomLayout}
+    />
+  );
+};
+```
+
+If you want to use a different layout component, you can pass it as the `layout` prop.
+
+```tsx
+import { MDXLayout } from "@/components/mdx-components";
+
+export const Content = () => {
+  return (
+    <MDXLayout
+      mdxSource={source}
+      components={MDXComponents}
+      layout={MyLayout}
+    />
+  );
+};
+```
+
+## Custom components
+
+By default, MDX pages use the `MDXComponents` object to map JSX components to markdown syntax. You can import this object from `@/components/mdx-components` and use it as the `components` prop.
+
+```tsx
+import { MDXComponents } from "@/components/mdx-components";
+
+export const Content = () => {
+  return <MDXLayout mdxSource={source} components={MDXComponents} />;
+};
+```
+
+If you want to use a different set of components, you can pass them as the `components` prop.
