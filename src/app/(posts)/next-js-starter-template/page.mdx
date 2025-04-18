@@ -1,0 +1,209 @@
+import Date from "@/components/date";
+import ScriptCopy from "@/components/script-copy";
+import Tag from "@/components/tag";
+import { formatDate } from "@/lib/utils";
+
+export const metadata = {
+  title: "Next JS Starter Template",
+  publishedAt: "2025-04-18T00:00:00Z",
+  tags: ["nextjs", "blog"],
+};
+
+# Next JS Starter Template
+
+<Date date={metadata.publishedAt} />
+<Tag tags={metadata.tags} />
+
+## Introduction
+
+This post documents a basic template for a Next.js project that I am personally using, heavily referencing the video by CJ from Syntax: [Create your own Next.js Starter Template](https://youtu.be/dLRKV-bajS4?si=MAeBfZa6-uoo1wa_). There are some things I haven't included in this template, such as authentication and Drizzle ORM setup. At the time of writing, I have already completed another project which involved rolling my own authentication from scratch in Next.js, but I still haven't decided whether to continue using this custom auth for other Next.js projects, or simply use a third-party service like Clerk or Better-Auth. I plan to try my custom auth on a simpler, smaller Next.js project first before deciding on its suitability for future projects.
+
+## Requirement
+
+<ScriptCopy
+  scripts={[
+    {
+      packageName: "npm",
+      script:
+        "npm install --save-dev eslint-config-prettier @trivago/prettier-plugin-sort-imports prettier prettier-plugin-tailwindcss eslint-plugin-check-file",
+    },
+    {
+      packageName: "pnpm",
+      script:
+        "pnpm add --save-dev eslint-config-prettier @trivago/prettier-plugin-sort-imports prettier prettier-plugin-tailwindcss eslint-plugin-check-file",
+    },
+    {
+      packageName: "bun",
+      script:
+        "bun add --dev eslint-config-prettier @trivago/prettier-plugin-sort-imports prettier prettier-plugin-tailwindcss eslint-plugin-check-file",
+    },
+  ]}
+/>
+
+## Setup
+
+The `eslint-config-prettier` package helps ESLint and Prettier work together by disabling any ESLint rules that might conflict with Prettier.
+
+Create a `.prettierrc.json` file, modify the existing `eslint.config.mjs`, and create a hidden `.vscode` folder containing a `settings.json` file. This setup enables automatic code formatting and import sorting in VS Code on save.
+
+Here are the configurations for Prettier, ESLint, and VS Code settings:
+
+<ScriptCopy
+  scripts={[
+    {
+      packageName: ".prettierrc.json",
+      script: `{
+    "semi": true,
+    "singleQuote": false,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "importOrder": [
+      "^(react|next?/?([a-zA-Z/]*))$",
+      "<THIRD_PARTY_MODULES>",
+      "^@/(.*)$",
+      "^[./]"
+    ],
+    "importOrderSeparation": true,
+    "importOrderSortSpecifiers": true,
+    "plugins": ["@trivago/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"]
+}
+`,
+    },
+    {
+      packageName: "eslint.config.mjs",
+      script: `
+const eslintConfig = [
+  ...compat.config({
+    extends: ["next/core-web-vitals", "next/typescript", "prettier"],
+    plugins: ["check-file"],
+    rules: {
+      "prefer-arrow-callback": "error",
+      "prefer-template": "error",
+      "check-file/filename-naming-convention": [
+        "error",
+        {
+          "**/*.{ts,tsx}": "KEBAB_CASE",
+        },
+      ],
+      "check-file/folder-naming-convention": [
+        "error",
+        {
+          "src/**/![.*": "KEBAB_CASE",
+        },
+      ],
+    },
+  }),
+];`,
+    },
+    {
+      packageName: "setting.json",
+      script: `{
+"editor.formatOnSave": true,
+"editor.codeActionsOnSave": {
+  "source.fixAll": "always",
+  "source.organizeImports": "always"
+},
+"files.associations": {
+  "*.css": "tailwindcss"
+},
+"typescript.tsdk": "node_modules/typescript/lib"
+}`,
+    },
+  ]}
+/>
+
+## Dark Mode
+
+Dark mode is a common feature in modern projects. I use the standard `shadcn/ui` solution, following the instructions from the [shadcn/ui documentation](https://ui.shadcn.com/docs/dark-mode). The main difference is that I created a `provider.tsx` file where I set all the necessary attributes for `next-themes`, instead of setting them directly in the main `layout.tsx`. This approach is useful for projects requiring multiple providers, as they can all be consolidated within this single `provider.tsx` file, keeping the main `layout.tsx` minimal. Remember to still set the `suppressHydrationWarning` attribute on the `html` tag in the main `layout.tsx`.
+
+Another difference is the theme toggle component. Instead of a dropdown or a standard button, I use the `Toggle` component from `shadcn/ui`. It only switches between dark and light modes (no system mode option) with a single click. This is my personal preference, and you can customize it as needed. I also slightly modified the default `Toggle` style to remove the background color that indicates its `data-[state=on]` status.
+
+<ScriptCopy
+  scripts={[
+    {
+      packageName: "provider.tsx",
+      script:
+`"use client";
+
+import { ThemeProvider } from "next-themes";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+    return (
+      <ThemeProvider
+        attribute="class"
+        enableSystem
+        defaultTheme="system"
+        disableTransitionOnChange
+      >
+        {children}
+      </ThemeProvider>
+    );
+}
+`
+    },
+    {
+      packageName: "theme-toggle.tsx",
+      script:`"use client";
+
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+
+import { Toggle } from "./ui/toggle";
+
+export const ThemeToggle = () => {
+  const { theme, setTheme } = useTheme();
+  return (
+    <Toggle onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+      <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+      <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+      <span className="sr-only">Toggle theme</span>
+    </Toggle>
+  );
+};
+`
+    },
+    {
+      packageName: "toggle.tsx",
+      script:
+`//remove this from the toggleVariant className
+data-[state=on]:bg-accent data-[state=on]:text-accent-foreground`
+    },
+  ]}
+/>
+
+## Environment Variable
+
+While the standard way of declaring and using environment variables works, certain libraries or packages can sometimes have issues recognizing variable types, forcing workarounds like appending a `!` assertion in TypeScript. Typographical errors in variable names are also a common pitfall.
+
+To address this, I install `@t3-oss/env-nextjs` and `zod`. This setup provides type-safe environment variables, significantly reducing errors and offering helpful IntelliSense auto-completion when accessing variables. I haven't customized the setup significantly; I split the configuration into `server.ts` and `client.ts` files but currently only use the `server.ts` file. For configuration details, you can follow the official [T3 Env documentation](https://env.t3.gg/docs/nextjs).
+
+## Docker Database
+
+Many online hosted databases exist, like MongoDB, Turso, Neon, and others. However, I've previously used services that offered free tiers initially but later discontinued them. Consequently, I now prefer using Docker to run a local PostgreSQL instance for development. That said, at the time of writing, I do plan to use Neon for some projects intended for deployment on Vercel once they are completed.
+
+Here is my simple Docker setup for reference:
+
+<ScriptCopy
+  scripts={[
+    {
+      packageName: "docker-compose.yml",
+      script:
+  `services:
+  db:
+    image: postgres:17.0
+    container_name: node-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=\${DB_PASSWORD}
+      - POSTGRES_USER=\${DB_USER}
+      - POSTGRES_DB=\${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+pgdata:
+`},
+]}
+/>

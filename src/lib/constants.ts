@@ -4,5 +4,5 @@ export const navLinks = [
   { name: "Project", href: "/tag/project" },
 ];
 
-export const tags = ["js", "mdx", "nextjs", "blog", "project"] as const;
+export const tags = ["js", "mdx", "nextjs", "blog", "project", "auth"] as const;
 export type TagType = (typeof tags)[number];

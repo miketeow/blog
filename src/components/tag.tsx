@@ -7,6 +7,9 @@ interface TagProps {
   tags: string[];
 }
 const Tag = ({ tags }: TagProps) => {
+  if (!tags || tags.length == 0) {
+    return null;
+  }
   return (
     <div className="flex flex-wrap gap-2">
       {tags.map((tag) => (
@@ -14,9 +17,7 @@ const Tag = ({ tags }: TagProps) => {
           key={tag}
           href={`/tag/${tag}`}
           className={badgeVariants({
-            variant: "outline",
-            className:
-              "mb-2 rounded-sm bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+            variant: "tag",
           })}
         >
           {tag}

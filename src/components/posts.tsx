@@ -5,24 +5,28 @@ import { Post } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
 
 const Posts = ({ posts }: { posts: Post[] }) => {
+  if (!posts || posts.length == 0) {
+    return <p className="text-muted-foreground italic">No posts found.</p>;
+  }
   return (
     <ul className="flex flex-col gap-8">
       {posts.map(({ slug, title, publishedAt }) => (
-        <Link key={slug} href={`/${slug}`} className="hover:underline">
-          <li className="group">
-            <div className="flex flex-col justify-between gap-x-6 gap-y-2 border-b border-gray-200 py-4 transition-colors sm:flex-row dark:border-gray-700">
-              <div>
-                <h2 className="max-w-lg text-xl font-semibold text-gray-900 transition-colors group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
-                  {title}
-                </h2>
-              </div>
+        <li
+          className="group border-border hover:bg-muted/50 border-b transition-colors last:border-b-0"
+          key={slug}
+        >
+          <Link key={slug} href={`/${slug}`} className="block w-full px-1 py-4">
+            <div className="flex flex-col justify-between gap-x-6 gap-y-1 sm:flex-row">
+              <h2 className="text-foreground group-hover:text-primary text-lg font-semibold transition-colors sm:text-xl">
+                {title}
+              </h2>
 
-              <p className="mt-1 font-mono text-sm">
+              <p className="text-muted-foreground shrink-0 pt-1 font-mono text-sm sm:pt-0">
                 {formatDate(publishedAt)}
               </p>
             </div>
-          </li>
-        </Link>
+          </Link>
+        </li>
       ))}
     </ul>
   );

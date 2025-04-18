@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ComponentPropsWithoutRef } from "react";
 
-import { highlight } from "sugar-high";
+import { StyledCode } from "./components/styled-code";
+import { StyledPre } from "./components/styled-pre";
 
 type AnchorProps = ComponentPropsWithoutRef<"a">;
 type ParagraphProps = ComponentPropsWithoutRef<"p">;
@@ -46,10 +47,12 @@ const components = {
     </h3>
   ),
 
-  code: ({ children, ...props }: ComponentPropsWithoutRef<"code">) => {
-    const codeHTML = highlight(children as string);
-    return <code dangerouslySetInnerHTML={{ __html: codeHTML }} {...props} />;
-  },
+  // code: ({ children, ...props }: ComponentPropsWithoutRef<"code">) => {
+  //   const codeHTML = highlight(children as string);
+  //   return <code dangerouslySetInnerHTML={{ __html: codeHTML }} {...props} />;
+  // },
+  code: StyledCode,
+  pre: StyledPre,
   a: ({ href, children, ...props }: AnchorProps) => {
     const className = `text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200`;
     if (href?.startsWith("/")) {

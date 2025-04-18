@@ -39,7 +39,7 @@ const CodeBlock = ({ src, language, filename }: CodeBlock) => {
     if (highlightedCode) {
       return (
         <div
-          className="bg-background h-full overflow-auto font-mono [&_code]:break-all [&>pre]:h-full [&>pre]:!bg-transparent [&>pre]:p-4"
+          className="bg-background h-full overflow-auto rounded-b-md font-mono [&_code]:break-all [&>pre]:h-full [&>pre]:!bg-transparent [&>pre]:p-4"
           dangerouslySetInnerHTML={{ __html: highlightedCode }}
         />
       );
