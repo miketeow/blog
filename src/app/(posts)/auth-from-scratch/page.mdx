@@ -16,4 +16,203 @@ export const metadata = {
 
 ## Introduction
 
-This project is following the video by Web Dev Simplified [Next JS Authentication Masterclass](https://youtu.be/yoiBv0K6_1U?si=Uh6107xNRmX9b5JF). For the most part, I would recommend you check out his video. Here I am just documenting some part that I do it differently,
+This project is following the video by Web Dev Simplified [Next JS Authentication Masterclass](https://youtu.be/yoiBv0K6_1U?si=Uh6107xNRmX9b5JF). For the most part, I would recommend you check out his video first, all credits go to him, amazing tutorial and explanations.
+
+Here I am just documenting the process of how I follow along the tutorial, my own understanding and interpretation, and things that I do differently because of limitations or difficulty that I encounter. A few significant difference that I can mention now is that there is a major difference in the github oauth implementation, and also I add google oauth as well, which the reference video did not include.
+
+## Setup
+
+As usual, I use my own [next js starter template](../next-js-starter-template) as a starting point. And then follow the video, you can actually go to his git repo and copy the boilerplate sign-in form and any component that you need. I won't be mentioning and repeating everything from the video, unless there are something that I do it differently or there is something that I think is important and add my own interpretation and understanding.If I don't explicitly incldude any particular step, assumed that I am doing it exactly as the video.
+
+## Password Hashing
+
+We need unique salt for each password. A salt is a random data added to the password before hashing. This ensures that even if two users use the same password, their stored password will still be different.
+
+Here is the original code from the video, and modified version.
+
+<ScriptCopy
+scripts={[
+{
+packageName: "password-hasher.ts(original)",
+script:
+`import crypto from "crypto";
+
+export function hashPassword(password: string, salt: string):Promise<string> {
+    return new Promise((resolve, reject) => {
+      crypto.scrypt(password.normalize(), salt, 64, (error, hash) => {
+        if (error) reject(error);
+        resolve(hash.toString("hex").normalize());
+      });
+    });
+}`
+},
+{
+packageName: "password-hasher.ts(modified)",
+script:`import crypto from "crypto";
+import { promisify } from "util";
+
+//Promisify scrypt for cleaner async await syntax
+const scryptAsync = promisify(crypto.scrypt);
+
+export async function hashPassword(password: string, salt: string): Promise<string> {
+    const normalizePassword = password.normalize();
+    const derivedKey = (await scryptAsync(normalizePassword, salt, 64)) as Buffer;
+    return derivedKey.toString("hex");
+}`
+},
+]}
+/>
+
+The `crypto.scrypt` is a asynchronous function that takes a callback function as the last argument, and it is invokes when the async operation completes. The callback is typically what a **error-first callback pattern** where it called with error object as first argument (null if there was no error), and the result (if any) as the second argument.
+
+In the modified version, i use a built in `node.js` util function `util.promisify` that takes a function with standard asynchronous **error-first callback** pattern and convert it into a function that return a **Promise**.
+
+I use type assertion in the derived key line to directly tell TypeScript that it will return a Buffer type if success based on the `scrypt` API documentation. Else, it will cause error in the next line, the final return, because typescript cannot properly infer the exact type of Promises after the `promisify` transformation, it infers the `derivedKey` as `Promise<Unknown>` before we include the type assertion.
+
+One way to demonstrate the effect of salt is to hardcoded a literal value to the hash password function.
+
+<ScriptCopy
+scripts={[
+{
+packageName: "actions.ts",
+script: `export async function signUp(unsafeData: z.infer<typeof signUpSchema>) {
+    //...
+    if (existingUser != null) return "Account already existed for this email";
+    //Add this line below
+    const hashedPassword = await hashPassword(data.password, "salt");
+    console.log(hashedPassword);
+    redirect("/");
+}`,
+},
+]}
+/>
+
+Replace the hardcoded "salt" with a generate salt function, try to sign up with different email but use the same password, it will worked because the hashed password is different.
+
+<ScriptCopy
+scripts={[
+{
+packageName: "password-hasher.ts",
+script: `export function generateSalt() {
+    return crypto.randomBytes(16).toString("hex");
+}`,
+},
+{
+packageName: "actions.ts",
+script: `export async function signUp(unsafeData: z.infer<typeof signUpSchema>) {
+    //...
+    const hashedPassword = await hashPassword(data.password, generateSalt());
+    console.log(hashedPassword);
+    redirect("/");
+}`,
+},
+]}
+/>
+
+You can then sign up the user, create a new user in the database, store the user information including the hashed password and the salt.
+
+<ScriptCopy
+scripts={[
+{
+packageName: "actions.ts",
+script: `export async function signUp(unsafeData: z.infer<typeof signUpSchema>) {
+    const { success, data } = signUpSchema.safeParse(unsafeData);
+    if (!success) {
+        console.log(data);
+        return "Unable to create account";
+    }
+
+    const existingUser = await db.query.UserTable.findFirst({
+        where: eq(UserTable.email, data.email),
+    });
+
+    if (existingUser != null) return "Account already existed for this email";
+    const salt = generateSalt();
+    const hashedPassword = await hashPassword(data.password, salt);
+    try {
+        const [user] = await db
+        .insert(UserTable)
+        .values({
+            name: data.name,
+            email: data.email,
+            password: hashedPassword,
+            salt,
+        })
+        .returning({ id: UserTable.id, role: UserTable.role });
+        if (user == null) return "Unable to create account";
+    } catch {
+        return "Unable to create account";
+    }
+        redirect("/");
+}`,
+},
+]}
+/>
+
+If you are using drizzle orm for database, you should be able to see the record being created in drizzle studio.
+
+## Session Management
+
+After a user sign-in or sign-up, we need to remember them for subsequent request. This would be done using session.
+
+1. Generate a unique session id when user authenticates.
+2. Store the session id server-side, in a redis database, along with user information and the expiration time token.
+3. Send the session id to the user's browser stored in an HTTP cookie. Configure the cookie securely.
+4. On subsequent requests from the user, the browser will automatically send the cookie back.
+5. In our middleware or backend code, we can then extract the session id from the cookie, look it up and validate it, check if the user existed and hasn't expired, and can get the user data.
+
+<ScriptCopy
+scripts={[
+{
+packageName: "session.ts(session)",
+script: `//seven days in seconds
+const SESSION_EXPIRATION_SECONDS = 60 * 60 * 24 * 7;
+const COOKIE_SESSION_KEY = "session-id";
+export type Cookies = {
+    set: (
+      key: string,
+      value: string,
+      options: {
+        secure?: boolean;
+        httpOnly?: boolean;
+        sameSite?: "strict" | "lax";
+        expires?: number;
+      }
+    ) => void;
+    get: (key: string) => { name: string; value: string } | undefined;
+    delete: (key: string) => void;
+};
+
+const sessionSchema = z.object({
+id: z.string(),
+role: z.enum(userRoles),
+});
+
+type UserSession = z.infer<typeof sessionSchema>;
+
+export async function createUserSession(
+    user: UserSession,
+    cookies: Pick<Cookies, "set">
+) {
+  const sessionId = crypto.randomBytes(512).toString("hex").normalize();
+  await redisClient.set(\`session:\${sessionId}\`, sessionSchema.parse(user), {
+      ex: SESSION_EXPIRATION_SECONDS,
+  });
+
+setCookie(sessionId, cookies);
+}`,
+},
+{
+packageName: "session.ts(cookie)",
+script: `function setCookie(sessionId: string, cookies: Pick<Cookies, "set">) {
+    cookies.set(COOKIE_SESSION_KEY, sessionId, {
+        secure: true,
+        httpOnly: true,
+        sameSite: "lax",
+        expires: Date.now() + SESSION_EXPIRATION_SECONDS \* 1000,
+        }
+    );
+}`,
+},
+]}
+/>

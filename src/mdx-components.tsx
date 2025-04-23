@@ -46,16 +46,11 @@ const components = {
       {children}
     </h3>
   ),
-
-  // code: ({ children, ...props }: ComponentPropsWithoutRef<"code">) => {
-  //   const codeHTML = highlight(children as string);
-  //   return <code dangerouslySetInnerHTML={{ __html: codeHTML }} {...props} />;
-  // },
   code: StyledCode,
   pre: StyledPre,
   a: ({ href, children, ...props }: AnchorProps) => {
     const className = `text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200`;
-    if (href?.startsWith("/")) {
+    if (href?.startsWith("../")) {
       return (
         <Link href={href} className={className} {...props}>
           {children}
