@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn, generateSlug } from "@/lib/utils";
 
 interface LinkType {
   id: string;
@@ -17,17 +17,36 @@ const OnThisPage = ({ className }: { className: string }) => {
       const mainContent = document.querySelector("main");
 
       if (!mainContent) return;
-
+      // Keep tracks for potential duplicate headings
+      const usedIds = new Set<string>();
       const headings = mainContent.querySelectorAll("h2,h3");
       const generatedLinks: LinkType[] = Array.from(headings).map(
         (heading, index) => {
-          const id = heading.id || `heading-${index}`;
-          heading.id = id;
+          let tempId = heading.id || generateSlug(heading.textContent || "");
+          if (!tempId) {
+            tempId = `heading-${index}`;
+          }
+          // Handle potential duplicate
+
+          let finalId = tempId;
+          let counter = 1;
+
+          while (usedIds.has(finalId)) {
+            console.warn(
+              `On This Page: Duplicate Id detected "${tempId}". Appending counter`
+            );
+            finalId = `${tempId}-${counter}`;
+            counter++;
+          }
+
+          usedIds.add(finalId);
+          // Set unique id on the actual heading element
+          heading.id = finalId;
 
           const level = heading.tagName.toLowerCase() as "h2" | "h3";
 
           return {
-            id,
+            id: finalId,
             text: heading.textContent || "",
             level,
           };

@@ -12,3 +12,14 @@ export function formatDate(date: string) {
     year: "numeric",
   });
 }
+
+export const generateSlug = (text: string): string => {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/[^\w-]+/g, "") // Remove invalid chars (keeps word chars, numbers, underscore, hyphen)
+    .replace(/--+/g, "-") // Replace multiple - with single -
+    .replace(/^-+/, "") // Trim - from start
+    .replace(/-+$/, ""); // Trim - from end
+};
