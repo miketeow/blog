@@ -17,7 +17,7 @@ const components = {
   // Paragraphs
   p: ({ children, ...props }: ParagraphProps) => (
     <p
-      className="mb-6 text-base leading-7 text-gray-700 dark:text-gray-300"
+      className="text-foreground mb-6 justify-evenly text-justify font-sans text-base leading-7"
       {...props}
     >
       {children}
@@ -32,7 +32,7 @@ const components = {
   ),
   h2: ({ children, ...props }: H2Props) => (
     <h2
-      className="mt-10 mb-5 text-3xl leading-tight font-semibold text-gray-900 dark:text-gray-100"
+      className="mt-10 mb-5 font-sans text-3xl leading-tight font-semibold text-gray-900 dark:text-gray-100"
       {...props}
     >
       {children}
@@ -40,7 +40,7 @@ const components = {
   ),
   h3: ({ children, ...props }: H3Props) => (
     <h3
-      className="mt-8 mb-4 text-2xl leading-snug font-semibold text-gray-900 dark:text-gray-100"
+      className="mt-8 mb-4 font-sans text-2xl leading-snug font-semibold text-gray-900 dark:text-gray-100"
       {...props}
     >
       {children}
@@ -49,7 +49,7 @@ const components = {
   code: StyledCode,
   pre: StyledPre,
   a: ({ href, children, ...props }: AnchorProps) => {
-    const className = `text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200`;
+    const className = `text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 font-sans`;
     if (href?.startsWith("../")) {
       return (
         <Link href={href} className={className} {...props}>
@@ -78,23 +78,17 @@ const components = {
   },
   // Optional: Lists
   ul: ({ children, ...props }: UnorderListProps) => (
-    <ul
-      className="mb-6 list-disc pl-6 text-gray-700 dark:text-gray-300"
-      {...props}
-    >
+    <ul className="text-foreground mb-6 list-disc pl-6" {...props}>
       {children}
     </ul>
   ),
   ol: ({ children, ...props }: OrderListProps) => (
-    <ol
-      className="mb-6 list-decimal pl-6 text-gray-700 dark:text-gray-300"
-      {...props}
-    >
+    <ol className="text-foreground mb-6 list-decimal pl-6" {...props}>
       {children}
     </ol>
   ),
   li: ({ children, ...props }: ListProps) => (
-    <li className="mb-2" {...props}>
+    <li className="mb-2 font-sans" {...props}>
       {children}
     </li>
   ),

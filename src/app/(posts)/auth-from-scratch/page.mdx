@@ -16,19 +16,21 @@ export const metadata = {
 
 ## Introduction
 
-This project is following the video by Web Dev Simplified [Next JS Authentication Masterclass](https://youtu.be/yoiBv0K6_1U?si=Uh6107xNRmX9b5JF). For the most part, I would recommend you check out his video first, all credits go to him, amazing tutorial and explanations.
+This post documents my process of following the [Next JS Authentication Masterclass](https://youtu.be/yoiBv0K6_1U?si=Uh6107xNRmX9b5JF) video tutorial by Web Dev Simplified. I highly recommend watching his video first, as it provides excellent explanations and demonstrations. All credit for the original concepts and guidance goes to him.
 
-Here I am just documenting the process of how I follow along the tutorial, my own understanding and interpretation, and things that I do differently because of limitations or difficulty that I encounter. A few significant difference that I can mention now is that there is a major difference in the github oauth implementation, and also I add google oauth as well, which the reference video did not include.
+This post serves as my personal log, detailing my understanding, interpretations, and any modifications I made while implementing the features shown in the tutorial. It also covers challenges I encountered and how I addressed them. Notably, my implementation of GitHub OAuth differs significantly from the tutorial, and I've also added Google OAuth, which wasn't covered in the original video.
+
+You can find the complete code implementation for this project in my GitHub repository here:[Auth From Scratch](https://github.com/miketeow/auth-from-scratch)
 
 ## Setup
 
-As usual, I use my own [next js starter template](../next-js-starter-template) as a starting point. And then follow the video, you can actually go to his git repo and copy the boilerplate sign-in form and any component that you need. I won't be mentioning and repeating everything from the video, unless there are something that I do it differently or there is something that I think is important and add my own interpretation and understanding.If I don't explicitly incldude any particular step, assumed that I am doing it exactly as the video.
+As a starting point, I used my own [next js starter template](../next-js-starter-template). From there, I followed the tutorial's steps. You can find the boilerplate sign-in form and other necessary components in the instructor's GitHub repository linked in the video description. I won't reiterate every step from the tutorial here, focusing instead on areas where my approach differed or where I felt additional explanation or personal insights were valuable. If a specific step isn't mentioned, assume I followed the tutorial exactly.
 
 ## Password Hashing
 
-We need unique salt for each password. A salt is a random data added to the password before hashing. This ensures that even if two users use the same password, their stored password will still be different.
+To securely store passwords, we need to hash them. A crucial part of this process is using a unique salt for each password. A salt is random data added to a password before it's hashed. This ensures that even if two users happen to choose the same password, the resulting stored hashes will be different, significantly enhancing security.
 
-Here is the original code from the video, and modified version.
+Here's the original password hashing code from the tutorial compared to my modified version:
 
 <ScriptCopy
 scripts={[
@@ -63,13 +65,13 @@ export async function hashPassword(password: string, salt: string): Promise<stri
 ]}
 />
 
-The `crypto.scrypt` is a asynchronous function that takes a callback function as the last argument, and it is invokes when the async operation completes. The callback is typically what a **error-first callback pattern** where it called with error object as first argument (null if there was no error), and the result (if any) as the second argument.
+The original code uses `crypto.scrypt`, an asynchronous function that employs the common Node.js error-first callback pattern. This pattern involves passing a callback function as the last argument, which is invoked upon completion. The callback receives an error object as its first argument (or null if no error occurred) and the result as the second argument.
 
-In the modified version, i use a built in `node.js` util function `util.promisify` that takes a function with standard asynchronous **error-first callback** pattern and convert it into a function that return a **Promise**.
+In my modified version, I utilized `util.promisify`, a built-in Node.js utility. This function converts a function using the error-first callback pattern into one that returns a Promise, allowing for more modern async/await syntax.
 
-I use type assertion in the derived key line to directly tell TypeScript that it will return a Buffer type if success based on the `scrypt` API documentation. Else, it will cause error in the next line, the final return, because typescript cannot properly infer the exact type of Promises after the `promisify` transformation, it infers the `derivedKey` as `Promise<Unknown>` before we include the type assertion.
+Note the type assertion as Buffer on the `derivedKey`. This explicitly informs TypeScript that, according to the `crypto.scrypt` documentation, a successful operation will resolve with a Buffer. Without this assertion, TypeScript might infer the type incorrectly (e.g. as unknown or a broader type) after the promisify transformation, potentially leading to type errors later when trying to call `toString("hex")`.
 
-One way to demonstrate the effect of salt is to hardcoded a literal value to the hash password function.
+To demonstrate the importance of using a unique salt per user, you could temporarily hardcode a salt value when hashing:
 
 <ScriptCopy
 scripts={[
@@ -87,7 +89,9 @@ script: `export async function signUp(unsafeData: z.infer<typeof signUpSchema>) 
 ]}
 />
 
-Replace the hardcoded "salt" with a generate salt function, try to sign up with different email but use the same password, it will worked because the hashed password is different.
+If you tried signing up multiple users with the same password using this hardcoded salt, you'd find they all have the exact same hashed password stored, which is insecure.
+
+Now, replace the hardcoded salt with a dynamically generated one for each user:
 
 <ScriptCopy
 scripts={[
@@ -109,7 +113,9 @@ script: `export async function signUp(unsafeData: z.infer<typeof signUpSchema>) 
 ]}
 />
 
-You can then sign up the user, create a new user in the database, store the user information including the hashed password and the salt.
+With `generateSalt()`, signing up different users with the same password will now result in different stored hashes because each password was combined with a unique salt before hashing.
+
+Finally, you can integrate this into your user creation logic, storing the user's details along with the unique salt and the resulting hashed password in your database:
 
 <ScriptCopy
 scripts={[
@@ -149,22 +155,24 @@ script: `export async function signUp(unsafeData: z.infer<typeof signUpSchema>) 
 ]}
 />
 
-If you are using drizzle orm for database, you should be able to see the record being created in drizzle studio.
+If you're using Drizzle ORM, you should now be able to use a tool like Drizzle Studio to view the newly created user record, including the stored hashedPassword and salt fields.
 
 ## Session Management
 
-After a user sign-in or sign-up, we need to remember them for subsequent request. This would be done using session.
+Once a user successfully signs in or signs up, we need a mechanism to "remember" them across subsequent requests without requiring them to log in every time. This is achieved through session management. Here's a typical flow:
 
-1. Generate a unique session id when user authenticates.
-2. Store the session id server-side, in a redis database, along with user information and the expiration time token.
-3. Send the session id to the user's browser stored in an HTTP cookie. Configure the cookie securely.
-4. On subsequent requests from the user, the browser will automatically send the cookie back.
-5. In our middleware or backend code, we can then extract the session id from the cookie, look it up and validate it, check if the user existed and hasn't expired, and can get the user data.
+1. **Generate Session ID**: When a user authenticates successfully, generate a cryptographically strong, unique session ID.
+2. **Store Session Data**: Store this session ID on the server-side (e.g. in a Redis database, as shown below) along with relevant user information (like user ID and role) and an expiration timestamp.
+3. **Set Cookie**: Send the unique session ID back to the user's browser, stored within an HTTP cookie. It's crucial to configure this cookie securely.
+4. **Automatic Cookie Sending**: On subsequent requests to your application domain, the browser automatically includes the session cookie in the HTTP headers.
+5. **Validate Session**: In your server-side code (often in middleware), extract the session ID from the incoming cookie. Look up this ID in your session store (Redis), validate that the session exists and hasn't expired, and retrieve the associated user data.
+
+Here's how we can implement creating a session and setting the cookie:
 
 <ScriptCopy
 scripts={[
 {
-packageName: "session.ts(session)",
+packageName: "session.ts (session)",
 script: `//seven days in seconds
 const SESSION_EXPIRATION_SECONDS = 60 * 60 * 24 * 7;
 const COOKIE_SESSION_KEY = "session-id";
@@ -203,7 +211,7 @@ setCookie(sessionId, cookies);
 }`,
 },
 {
-packageName: "session.ts(cookie)",
+packageName: "session.ts (cookie)",
 script: `function setCookie(sessionId: string, cookies: Pick<Cookies, "set">) {
     cookies.set(COOKIE_SESSION_KEY, sessionId, {
         secure: true,
@@ -216,3 +224,725 @@ script: `function setCookie(sessionId: string, cookies: Pick<Cookies, "set">) {
 },
 ]}
 />
+
+The cookie's same site option is set to lax because we are going to do oauth later, it will need to redirect from other site.
+
+## Get current user function
+
+Throughout the application, we'll frequently need to access the currently logged-in user's data. However, the specific requirements might vary: sometimes we need the full user profile from the database, other times just the basic information stored in the session is sufficient. We also need to handle cases where the user isn't logged in.
+
+To address these needs efficiently and with type safety, we can create a flexible `getCurrentUser` function. This implementation leverages several techniques:
+
+1. **Function Overloading** (TypeScript): Provides different "call signatures" for the same function. This allows TypeScript to infer the correct return type based on the options provided when calling the function, improving developer experience and catching potential errors at compile time.
+
+2. **Caching** (cache): Utilizes React's cache function (or a similar utility in Next.js) to memoize the result of the function within a *single server request/render cycle*. If `getCurrentUser` is called multiple times (e.g. in different components during the same page render) with the same arguments, the underlying logic (fetching from session/database) will only execute once, improving performance by avoiding redundant work.
+
+<ScriptCopy
+scripts={[
+{
+packageName:"current-user.ts",
+script:`// Type definition
+// Define FullUser type based on the return type of getUserFromDb, excluding null and undefined
+type FullUser = Exclude<
+  Awaited<ReturnType<typeof getUserFromDb>>,
+  undefined | null
+>;
+
+// Define User type based on the return type of getUserFromDb, excluding null and undefined
+// Use in data store in session
+type User = Exclude<
+  Awaited<ReturnType<typeof getUserFromSession>>,
+  undefined | null
+>;
+
+// Function overloads
+// Define the function's possible call signature and corresponding return type
+// based on the options provided
+
+// Get full user details, redirect if not logged in
+function _getCurrentUser(options: {
+  withFullUser: true;
+  redirectIfNotFound: true;
+}): Promise<FullUser>;
+
+// Get full user details, return null if not logged in
+function _getCurrentUser(options: {
+  withFullUser: true;
+  redirectIfNotFound?: false;
+}): Promise<FullUser | null>;
+
+// Get basic session user data, redirect if not logged in
+function _getCurrentUser(options: {
+  withFullUser?: false;
+  redirectIfNotFound: true;
+}): Promise<User>;
+
+// Get basic session user, return null if not logged in (default)
+function _getCurrentUser(options: {
+  withFullUser?: false;
+  redirectIfNotFound?: false;
+}): Promise<User | null>;
+
+// This function implements the logic for all the overload signatures
+async function _getCurrentUser({
+  withFullUser = false,
+  redirectIfNotFound = false,
+} = {}) {
+  // Get basic user info from session cookies
+  const user = await getUserFromSession(await cookies());
+
+  // If no user found in session, redirect back to sign in page
+  if (user == null) {
+    if (redirectIfNotFound) return redirect("/sign-in");
+    return null;
+  }
+
+  // Handle case where full user detail is requested
+  if (withFullUser) {
+    const fullUser = await getUserFromDb(user.id);
+    // Handle potential data inconsistency, (session existed, but user delete from DB)
+    if (fullUser == null) throw new Error("User not found in database");
+    return fullUser;
+  }
+
+  return user;
+}
+
+// Memoizes the result, if getCurrenUser called multiple time in different components
+// The underlying logic will only run once, essential for performance
+export const getCurrentUser = cache(_getCurrentUser);
+
+async function getUserFromDb(id: string) {
+  return await db.query.UserTable.findFirst({
+    columns: { id: true, email: true, role: true, name: true },
+    where: eq(UserTable.id, id),
+  });
+}`
+}
+]}
+/>
+
+## Middleware
+
+Next.js Middleware allows us to run code before a request is completed. In this authentication setup, we use middleware primarily for three critical tasks:
+- **protect private route**: only logged in user can access routes listed in the `privateRoute`
+- **protect admin route**: only logged in user with "admin" role can access routes listed in the `adminRoute`
+- **Implement session sliding**: extend the user's session expiration time whenever they interact with the site. This prevent user from being logged out abruptly after a fixed period (7 days) if they remain active.
+
+The middleware intercepts incoming requests, determines if authorization checks are needed based on the requested path, performs those checks, and manages session expiration updates.
+
+### Middleware Logic Flow
+Let's compare the original approach (closer to the tutorial) and a revised version designed for potentially better efficiency and handling of overlapping routes.
+
+Original Approach Explanation:
+
+The original middleware function first calls a helper function `middlewareAuth` to perform the authorization checks.
+
+1. `middlewareAuth` checks if the requested path is in the `privateRoute` list. If yes, it fetches the user session. If no user is found, it returns a redirect response to `/sign-in`.
+
+2. If the route wasn't private or the user was found, it then checks if the path is in the `adminRoute` list. If yes, it fetches the user session again (potentially redundant if also a private route). It redirects to `/sign-in` if no user is found, or redirects to the homepage (/) if the user exists but lacks the 'admin' role.
+
+3. If `middlewareAuth` completes without returning a redirect (meaning access is allowed or the route needs no protection), it returns `undefined`.
+
+4. Back in the main middleware function, the nullish coalescing operator (??) is used: `(await middlewareAuth(request)) ?? NextResponse.next()`. If `middlewareAuth` returned a redirect NextResponse, that response is used. If it returned `null` or `undefined`, the expression evaluates to the right-hand side, `NextResponse.next()`, which allows the request to proceed normally.
+
+5. Before returning the final response (either the redirect or NextResponse.next()), it calls `updateUserSessionExpiration`. This function reads the session ID from the incoming request cookies and updates its expiration time in the server-side session store (Redis). This implements the "session sliding".
+
+6. Finally, the middleware returns the response.
+
+Revised Approach Explanation:
+
+The modified version refactors the logic to avoid redundant session checks and potentially handle route definitions more flexibly.
+
+1. It initializes a default `response = NextResponse.next()`.
+
+2. It determines upfront if the requested pathname starts with any defined private or admin route prefixes using `pathname.startsWith(route)`. This is more flexible than an exact match (includes) if you have nested routes like `/admin/users` and `/admin/settings`.
+
+3. If the route is identified as private or admin, it attempts to fetch the user session once. A `sessionChecked` flag is set. Error handling is added here in case session retrieval fails.
+
+4. It then checks if the user is `null`. If they are (and the route required authentication), it immediately returns a redirect to `/sign-in`.
+
+5. If the user exists and the route is an admin route, it checks the user's role. If the role is not 'admin', it returns a redirect to the homepage (/).
+
+6. If the user exists, the session was checked `(sessionChecked && user !== null)`, and access is granted, then it attempts to update the session expiration via `updateUserSessionExpiration`. Error handling is added for this step too.
+
+7. Finally, it returns the response (which will be `NextResponse.next()` unless a redirect was triggered earlier).
+
+This revised approach ensures the session is fetched at most once per request needing protection and centralizes the redirect logic.
+
+<ScriptCopy
+scripts={[
+{
+packageName:"middleware.ts (original)",
+script:`import { type NextRequest, NextResponse } from "next/server";
+
+import {
+  getUserFromSession,
+  updateUserSessionExpiration,
+} from "./auth/core/session";
+
+const privateRoute = ["/private"];
+const adminRoute = ["/admin"];
+
+export async function middleware(request: NextRequest) {
+  const response = (await middlewareAuth(request)) ?? NextResponse.next();
+
+  //Extend the expiration everytime user interact with the site
+  //Instead of logging people off right after seven days since the first login
+  await updateUserSessionExpiration({
+    set: (key, value, options) => {
+      response.cookies.set({ ...options, name: key, value });
+    },
+    get: (key) => request.cookies.get(key),
+  });
+
+  return response;
+}
+
+async function middlewareAuth(request: NextRequest) {
+  if (privateRoute.includes(request.nextUrl.pathname)) {
+    const user = await getUserFromSession(request.cookies);
+    if (user == null) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+  }
+
+  if (adminRoute.includes(request.nextUrl.pathname)) {
+    const user = await getUserFromSession(request.cookies);
+    if (user == null) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+    if (user.role !== "admin") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+}
+
+export const config = {
+  matcher: [
+    // Skip Next js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+  ],
+};`
+},
+{
+packageName: "middleware.ts (modified)",
+script:`import { type NextRequest, NextResponse } from "next/server";
+
+import {
+  getUserFromSession,
+  updateUserSessionExpiration,
+} from "./auth/core/session";
+
+const privateRoute = ["/private"];
+const adminRoute = ["/admin"];
+
+export async function middleware(request: NextRequest) {
+  // Default response
+  const response = NextResponse.next();
+  // Flag to avoid double checking session
+  let sessionChecked = false;
+  let user = null;
+
+  // By setting it this way, we make sure every request is only checked once, because
+  // there might be overlapping route in the future, where it belongs to both private and admin route
+  const pathname = request.nextUrl.pathname;
+  const isPrivateRoute = privateRoute.some((route) =>
+    pathname.startsWith(route)
+  );
+  const isAdminRoute = adminRoute.some((route) => pathname.startsWith(route));
+
+  if (isPrivateRoute || isAdminRoute) {
+    try {
+      user = await getUserFromSession(request.cookies);
+      sessionChecked = true;
+    } catch (error) {
+      console.log("Middleware: Error fetching user session", error);
+      return NextResponse.redirect(
+        new URL("/sign-in?error=session_error", request.url)
+      );
+    }
+  }
+
+  if (user == null) {
+    const redirectUrl = new URL("/sign-in", request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (isAdminRoute && user.role !== "admin") {
+    // User logged in, but role is not admin
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  //Extend the expiration everytime user interact with the site
+  //Instead of logging people off right after seven days since the first login
+  if (sessionChecked && user !== null) {
+    try {
+      await updateUserSessionExpiration({
+        set: (key, value, options) => {
+          response.cookies.set({ ...options, name: key, value });
+        },
+        get: (key) => request.cookies.get(key),
+      });
+    } catch (error) {
+      console.log("Middleware: Error updating session expiration", error);
+    }
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    // Skip Next js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+  ],
+};`
+}
+]}
+/>
+
+## Toggle role and update session
+
+To allow users (presumably administrators) to change their own or others' roles, we can implement a Server Action.
+
+Implementing the Role Toggle Action
+
+This server action, toggleRole, performs the following steps:
+
+1. Retrieves the current user's data (ensuring they are logged in).
+2. Updates the user's record in the database, switching their role between 'admin' and 'user'.
+3. Crucially, it then updates the user's data stored in the active session.
+
+<ScriptCopy
+scripts={[
+{
+packageName:"toggle-role.ts",
+script:`export async function toggleRole() {
+  const user = await getCurrentUser({ redirectIfNotFound: true });
+
+  const [updatedUser] = await db
+    .update(UserTable)
+    .set({ role: user.role === "admin" ? "user" : "admin" })
+    .where(eq(UserTable.id, user.id))
+    .returning({ id: UserTable.id, role: UserTable.role });
+
+  await updateUserSessionData(updatedUser, await cookies());
+}`
+},
+{
+packageName:"session.ts",
+script:`export async function updateUserSessionData(
+  user: UserSession,
+  cookies: Pick<Cookies, "get">
+) {
+  // Get session
+  const sessionId = cookies.get(COOKIE_SESSION_KEY)?.value;
+  if (sessionId == null) return null;
+
+  // Reset expiration date, update the new user data
+  await redisClient.set(\`session:\${sessionId}\`, sessionSchema.parse(user), {
+    ex: SESSION_EXPIRATION_SECONDS,
+  });
+}`
+},
+{
+packageName:"middleware.ts",
+script:`export async function middleware(request: NextRequest) {
+  const response = (await middlewareAuth(request)) ?? NextResponse.next();
+
+  //Extend the expiration everytime user interact with the site
+  //Instead of logging people off right after seven days since the first login
+  await updateUserSessionExpiration({
+    set: (key, value, options) => {
+      response.cookies.set({ ...options, name: key, value });
+    },
+    get: (key) => request.cookies.get(key),
+  });
+
+  return response;
+}`
+}
+]}
+/>
+
+### Updating Session Data
+
+Changing the user's role in the database isn't enough. The user's current session, stored in Redis, still holds the old role information. If we don't update the session, the user might retain their old permissions until they log out and back in, or until the session expires.
+
+Therefore, after successfully updating the database, we must also update the data associated with the user's current session ID in Redis. The `updateUserSessionData` function handles this:
+
+1. It retrieves the current sessionId from the request cookies.
+2. If a session ID exists, it overwrites the existing session data in Redis with the new user information (containing the updated role) using `redisClient.set`.
+3. Importantly, it also resets the session's Time-To-Live (TTL) using the `ex` option, effectively extending the session duration simultaneously.
+
+### Improving Session Sliding
+
+In the previous section on Middleware, we discussed "session sliding" – extending the session's lifetime with user activity. The initial approach involved fetching the session data, then setting it again with a new expiration time. However, this is inefficient if we only want to update the expiration.
+
+Redis provides the EXPIRE command, which allows us to update the Time-To-Live (TTL) of a key directly, without needing to read or rewrite its value. This is ideal for session sliding.
+
+Modified `updateUserSessionExpiration` using EXPIRE:
+
+This modified function simply gets the session ID from the cookie and tells Redis to reset the timeout for that session key.
+
+1. Retrieves the sessionId from the request cookies.
+
+2. If the ID exists, it uses `redisClient.expire()` to set a new TTL (SESSION_EXPIRATION_SECONDS) on the corresponding `session:<sessionId>` key in Redis.
+
+3. It checks the result: expire returns 1 if the timeout was updated, and 0 if the key did not exist (e.g. the session already expired naturally between requests).
+
+Crucially, this version does not need to interact with the response cookies (setCookie), because the session ID cookie itself doesn't change – only its corresponding server-side expiration in Redis is affected.
+
+<ScriptCopy
+scripts={[
+{
+packageName:`middleware.ts`,
+script:`export async function middleware(request: NextRequest) {
+  const response = (await middlewareAuth(request)) ?? NextResponse.next();
+
+  //Extend the expiration everytime user interact with the site
+  //Instead of logging people off right after seven days since the first login
+  await updateUserSessionExpiration({
+    set: (key, value, options) => {
+      response.cookies.set({ ...options, name: key, value });
+    },
+    get: (key) => request.cookies.get(key),
+  });
+
+  return response;
+}`
+},
+{
+packageName:`session.ts (original)`,
+script:`export async function updateUserSessionExpiration(
+  cookies: Pick<Cookies, "get" | "set">
+) {
+  // Get session from cookies
+  const sessionId = cookies.get(COOKIE_SESSION_KEY)?.value;
+  if (sessionId == null) return null;
+
+  // Get user info by session
+  const user = await getUserSessionById(sessionId);
+  if (user == null) return;
+
+  // Reset the expiration date in redis
+  await redisClient.set(\`session:\${sessionId}\`, user, {
+    ex: SESSION_EXPIRATION_SECONDS,
+  });
+
+  // pass the session into cookie
+  setCookie(sessionId, cookies);
+}`
+},
+{
+packageName:"session.ts (modified)",
+script:`export async function updateUserSessionExpiration(
+  cookies: Pick<Cookies, "get" | "set">
+) {
+  // Get session from cookies
+  const sessionId = cookies.get(COOKIE_SESSION_KEY)?.value;
+  if (sessionId == null) return null;
+
+  try {
+    const result = await redisClient.expire(
+      \`session:\${sessionId}\`,
+      SESSION_EXPIRATION_SECONDS
+    );
+    if (result === 0) {
+      // Session didn't exist in Redis, maybe expired between requests
+      console.log("session id not found");
+      // Optional, consider to delete cookie if session is gone
+      // cookies.delete(COOKIE_SESSION_KEY)
+      return;
+    } else {
+      console.log("Update session expiration success");
+    }
+  } catch (error) {
+    console.log(
+      "updateUserSessionExpiration: Error updating user session expiration",
+      error
+    );
+  }
+}`
+}
+]}
+/>
+
+## Handling Runtime Compatibility
+
+As you noted, Next.js middleware often defaults to running on the Edge runtime for performance benefits. However, the Edge runtime has limitations and doesn't support all Node.js APIs. A common issue arises with the built-in Node.js crypto module, particularly functions like `crypto.randomBytes`.
+
+Even if your `middleware.ts` file doesn't directly import crypto, if it calls functions (like `createUserSession` from session.ts in this case) that do use Node.js-specific crypto functions, you might encounter runtime errors or warnings indicating incompatibility with the Edge environment (e.g. "crypto" is not compatible with the Edge Runtime).
+
+At the time you were writing this (referencing Next.js 15.2 timeframe - Note: Experimental features and configurations can change; always consult current Next.js documentation), there were primarily two ways to resolve this:
+
+ ### Use Node Js runtime
+
+You could configure Next.js to run the middleware using the Node.js runtime instead of the Edge runtime. This grants access to all Node.js APIs, resolving the compatibility issue.
+
+This typically involves:
+
+1. Potentially installing a canary version of Next.js (`bun add next@canary` or `npm install next@canary`).
+2. Enabling an experimental flag in next.config.js.
+3. Specifying the runtime in the middleware's config export.
+
+**Caution**: Relying on experimental flags is generally discouraged for production environments as they can change or be removed. This approach also sacrifices the potential performance benefits of the Edge runtime for middleware.
+
+<ScriptCopy
+scripts={[
+{
+packageName:"next.config.ts",
+script:`import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  experimental: {
+    nodeMiddleware: true,
+  },
+};
+
+export default nextConfig;`
+},
+{
+packageName:"middleware.ts",
+script:`export const config = {
+  runtime: "nodejs",
+  ...
+};`
+}
+]}
+/>
+
+### Use Edge-compatible API
+
+The preferred solution is to refactor the code causing the incompatibility to use APIs available in both Node.js and Edge environments. For cryptography, this usually means using the Web Crypto API, available via `globalThis.crypto`.
+
+Specifically, you can replace `crypto.randomBytes` (Node.js specific) with `globalThis.crypto.getRandomValues` (Web Crypto standard) when generating the session ID in `createUserSession`.
+
+<ScriptCopy
+scripts={[
+{
+packageName:"session.ts",
+script:`export async function createUserSession(
+  user: UserSession,
+  cookies: Pick<Cookies, "set">
+) {
+  const randomBytes = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(randomBytes);
+  const sessionId = Buffer.from(randomBytes).toString("hex");
+  await redisClient.set(\`session:\${sessionId}\`, sessionSchema.parse(user), {
+    ex: SESSION_EXPIRATION_SECONDS,
+  });
+
+  setCookie(sessionId, cookies);
+}`
+}
+]}
+/>
+
+## Oauth
+
+Integrating OAuth providers like GitHub or Google requires adjustments to our authentication system, starting with the database schema.
+
+### Database Schema Modifications for OAuth
+
+To support users logging in via OAuth providers alongside traditional password authentication, we need to modify our database schema:
+
+1. **Optional Password/Salt** : The password and salt fields in the user table should no longer be strictly required. Users signing up via OAuth won't have a password managed by our application.
+
+2. **OAuth Account Linking**: We need a way to link a single user account in our system to potentially multiple OAuth identities (e.g. the same user might link both their GitHub and Google accounts). This typically involves creating a new table (e.g. OAuthAccount) with a foreign key relationship back to the main User table (a one-to-many relationship: one user can have many OAuth accounts). This new table would store the provider name (e.g. 'github'), the provider-specific user ID, access tokens (potentially encrypted), refresh tokens, etc.
+
+### A Note on Drizzle Schema Migrations
+
+While modifying your database schema, particularly when adding relations or changing constraints, you might encounter issues with your migration tooling (like Drizzle Migrate).
+
+Personally, during this project, I ran into problems where Drizzle kept reporting that certain fields or constraints already existed, preventing clean migrations. Since this was an experimental project, my workaround was to manually reset the database state: I deleted the generated SQL migration files and JSON metadata, then used Drizzle Studio's SQL console to **DROP** all relevant tables, effectively starting with a clean slate before running `drizzle-kit generate` and `drizzle migrate` again.
+
+This isn't directly related to authentication logic itself, but rather a practical hurdle sometimes faced when evolving database schemas with ORMs. If you encounter persistent migration issues, carefully inspecting generated SQL, checking database state directly, or selectively resetting might be necessary – though use caution, especially in production! Starting the schema setup from scratch often resolved these issues for me in this learning context.
+
+
+## Authorise URL
+
+Implementing the initial step of the OAuth flow – redirecting the user to the provider's authorization page – largely follows the tutorial. Pay close attention when setting up environment variables; typos are common pitfalls. One minor point from the video: ensure your base OAuth redirect URL (e.g. OAUTH_REDIRECT_URL_BASE in your .env) ends with a trailing slash (/) like http://localhost:3000/api/oauth/, as inconsistencies here can cause redirect URI mismatch errors later.
+
+The `createAuthUrl` method within the OAuthClient class is responsible for constructing this provider-specific URL. While the function accepts cookies as an argument, its primary role in constructing the URL itself relies on the client's configuration (client ID, scopes, provider's auth endpoint, redirect URI). The cookies argument is used internally by helper functions (like `createState`, `createCodeVerifier`) to store security tokens (state, PKCE code verifier) that will be needed later in the flow for validation.
+
+The core logic for building the URL involves setting standard OAuth 2.0 query parameters:
+
+<ScriptCopy
+scripts={[
+{
+packageName:"core/oauth/base.ts",
+script:`createAuthUrl(cookies: Pick<Cookies, "set">) {
+
+const url = new URL(this.urls.auth);
+url.searchParams.set("client_id", this.clientId);
+url.searchParams.set("redirect_uri", this.redirectUrl.toString());
+url.searchParams.set("response_type", "code");
+url.searchParams.set("scope", this.scopes.join(" "));
+
+return url.toString();
+}`
+}
+]}
+/>
+
+This `createAuthUrl` method is then typically called from a Server Action triggered by a button click in your sign-in form. The action creates an instance of the appropriate OAuthClient and redirects the user.
+
+<ScriptCopy
+scripts={[
+{
+packageName:"auth/actions.ts",
+script:`export async function oAuthSignIn(provider: OAuthProvider) {
+  redirect(new OAuthClient.createAuthUrl(await cookies()));
+}`
+},
+{
+packageName: "sign-in-form.tsx",
+script:
+`<Button type="button"onClick={async () => await oAuthSignIn("discord")}>
+    Discord
+</Button>`
+}
+]}
+/>
+
+### Troubleshooting Initial Redirects
+
+During development, successfully reaching the provider's consent page (e.g. Google's account chooser or GitHub's authorization request) is the first hurdle. Common errors at this stage usually stem from configuration mistakes:
+
+- **Typos**: In environment variables, URLs, client IDs, or scopes.
+- **Scope Mismatches**: Using incorrect scope names (these vary significantly between providers – check their developer docs).
+- **Redirect URI Mismatch**: The redirect_uri sent in the URL parameters must exactly match one of the authorized redirect URIs configured in your application's settings on the provider's developer portal (e.g. [Discord Developer Portal](https://discord.com/developers/applications), [GitHub Developer settings](https://github.com/settings/developers), [Google Cloud Console](https://console.cloud.google.com/apis/credentials)). This is also where you obtain your Client ID and Client Secret.
+
+Once you can successfully reach the provider's consent screen, the next challenges often involve handling the callback and implementing security measures like state and PKCE.
+
+## Understanding Oauth Security: State and PKCE
+
+OAuth 2.0 includes mechanisms like the state parameter and PKCE (Proof Key for Code Exchange) to enhance security. If the tutorial's explanation was sufficient, feel free to skip this section, which reflects my personal journey in understanding their necessity.
+
+**PKCE (Code Verifier & Code Challenge): Protecting the Authorization Code**
+
+- **Problem**: In the standard OAuth "Authorization Code" flow, the provider sends a temporary code back to your application (via browser redirect). Your backend then exchanges this code (plus your client secret) for an access token. If an attacker intercepts this code during the redirect (e.g. through malicious browser extensions or other vulnerabilities), they could potentially exchange it for an access token themselves (especially problematic for public clients like mobile apps that can't securely store a client secret).
+
+- **Solution (PKCE)**:
+  1. **Client Creates Secret**: Before redirecting the user, your application generates a secret, random string called the code_verifier.
+  2. **Client Creates Challenge**: It then creates a transformed version of the verifier called the code_challenge (usually by SHA256 hashing the verifier).
+  3. **Challenge Sent**: Your app sends the code_challenge (and the transformation method, S256) to the authorization server as part of the initial /authorize request URL (front-channel).
+  4. **Code Issued**: The authorization server stores the challenge associated with the authorization code it issues.
+  5. **Verifier Sent**: When your backend exchanges the code for an access token later (via the back-channel /token request), it must also send the original code_verifier.
+  6. **Server Verifies**: The authorization server hashes the received code_verifier using the same method (S256) and checks if it matches the code_challenge stored earlier. If they match, it proves the client making the token request is the same one that initiated the authorization request, even if the code was intercepted. An attacker who only intercepted the code would not have the original code_verifier needed to complete the exchange.
+
+**State Parameter: Preventing CSRF on Callback**
+
+- **Problem**: An attacker could try to trick a logged-in user into visiting a malicious link that initiates an OAuth flow ending at your application's callback URL but with an authorization code generated from the attacker's account on the provider. If your application automatically links the provider account based on the code, the user might inadvertently link the attacker's account to their own session. This is a form of Cross-Site Request Forgery (CSRF).
+
+- **Solution (state)**:
+  1. **Client Creates State**: Before redirecting the user to the provider, your application generates a unique, unpredictable, and secret state value. This value is typically stored temporarily (e.g. in the user's session or a short-lived cookie).
+  2. **State Sent**: Your app includes this state value as a parameter in the /authorize request URL sent to the provider.
+  3. **State Returned**: The authorization provider must include the exact same state value when redirecting the user back to your callback URL (/api/oauth/callback?code=...&state=...).
+  4. **Client Verifies**: When your callback handler receives the request, it compares the state value from the URL parameter with the value it stored earlier (e.g. retrieved from the cookie). If they don't match, or if no state was stored, the request is rejected, preventing the CSRF attack.
+  5. **Why it works even in Front-Channel**: While an attacker can see the state parameter in the URL during the redirect, they cannot use it effectively. The state is tied to a specific user's session/cookie initiated by your application just moments before. An attacker trying to initiate a malicious flow wouldn't know the correct state value your application expects back for the victim user's session. Each auth attempt gets a unique state.
+
+**Why the Front-Channel is Necessary Initially**
+
+My initial confusion stemmed from why we send sensitive-looking things like code_challenge and state via the "front-channel" (browser URL parameters), which seems less secure than the "back-channel" (direct server-to-server communication).
+
+The key realization is that the very first step of the user-involved OAuth flow must involve the user's browser being redirected to the provider's domain (e.g. https://accounts.google.com/... or https://github.com/login/oauth/...). This is necessary for the provider to:
+
+1. Authenticate the user (if they aren't already logged in to the provider).
+2. Display the consent screen, asking the user to authorize your application.
+
+To render this consent screen correctly, the provider needs information immediately upon receiving the request:
+
+- `client_id`: To identify which application is requesting access.
+- `scope`: To know which permissions to ask the user for.
+- `redirect_uri`: To know where to send the user back after authorization.
+- `response_type=code`: To know which OAuth flow to use.
+- `state`: To send back for CSRF protection.
+- `code_challenge`: To associate with the eventual authorization code for PKCE.
+
+There's no practical way to securely transmit this initial set of parameters via a "back-channel" before the user is sent to the provider's page. The user's browser is the intermediary at this stage. My "silly idea" of redirecting to a generic provider page and then somehow sending details via a back-channel wouldn't work – how would the provider link the back-channel request to the specific user sitting at their consent screen? How would the user provide the `client_id` or `scope`? It's infeasible and offers a terrible user experience.
+
+Understanding that this initial front-channel redirect is unavoidable makes the purpose of PKCE and state clear: they are security mechanisms designed to mitigate the risks inherent in using the browser (front-channel) for parts of the flow. The truly sensitive exchange (code + client secret + code verifier for access token) does happen via the secure back-channel later.
+
+## Github Oauth
+
+Once the generic OAuthClient is set up, adding GitHub support involves configuring it with GitHub's specific URLs, scopes, and a parser for its user info response.
+
+A common issue encountered with GitHub OAuth, as seen in the tutorial and experienced personally, is failing to retrieve the user's email address. The standard `/user` endpoint (https://api.github.com/user) might return null for the email field, even if the user has emails associated with their account. This often happens due to the user's GitHub email privacy settings (e.g. "Keep my email addresses private").
+
+The `user:email` scope grants permission to read the user's email addresses, but you might need to fetch them from a different endpoint: https://api.github.com/user/emails.
+
+### Implementation Strategy
+
+My `userInfo.parser` for GitHub first attempts to get the email from the primary `/user` endpoint data. If it's null, it makes a second authenticated request to `/user/emails` to retrieve the list of emails, looks for the primary and verified one, and uses that.
+
+<ScriptCopy
+scripts={[
+{
+packageName:`github.ts`,
+script:`scopes: ["user:email", "read:user"],
+urls: {
+    auth: "https://github.com/login/oauth/authorize",
+    token: "https://github.com/login/oauth/access_token",
+    user: "https://api.github.com/user",
+},
+userInfo: {
+    schema: githubBaseUserSchema,
+    parser: async (baseUserData, { accessToken, tokenType }) => {
+    let finalEmail = baseUserData.email;
+
+    if (finalEmail === null) {
+        console.log("Github primary email null, fetching /user/emails...");
+        const emailUrls = "https://api.github.com/user/emails";
+    try {
+        const emailResponse = await fetch(emailUrls, {
+            headers: {
+            Authorization: \`\${tokenType} \${accessToken}\`,
+            Accept: "application/vnd.github.v3+json",
+            },
+        });
+
+        if (!emailResponse.ok) {
+        throw new Error(
+        \`Github email API Error: \${emailResponse.status} \${emailResponse.statusText}\`
+        );
+    }
+    const emailData = await emailResponse.json();
+    const parsedEmailResult = githubEmailSchema.safeParse(emailData);`
+}
+]}
+/>
+
+***(Note: The full implementation involves additional Zod schemas (`githubBaseUserSchema`, `githubEmailSchema`) and more robust error handling, available in the repository.)***
+
+## Google Oauth
+
+Adding Google OAuth follows a similar pattern. Key differences include:
+
+- **Scopes**: Google often uses OpenID Connect (OIDC) scopes alongside standard OAuth scopes. You'll likely need openid, email, and profile.
+- **URLs**: Finding the correct authorization, token, and user info endpoints in Google's extensive documentation can be challenging.
+
+Here are the standard Google OAuth 2.0 / OIDC endpoints I used (often found via LLM queries or specific OIDC discovery documents):
+
+<ScriptCopy
+scripts={[
+{
+packageName:`google.ts`,
+script:`urls: {
+auth: "https://accounts.google.com/o/oauth2/v2/auth",
+token: "https://oauth2.googleapis.com/token",
+user: "https://www.googleapis.com/oauth2/v3/userinfo",
+},`
+}
+]}
+/>
+
+## Acknowledgments
+
+This post documents my learning process while implementing the concepts taught in the following excellent resources:
+
+* **[Next JS Authentication Masterclass](https://youtu.be/yoiBv0K6_1U?si=Uh6107xNRmX9b5JF)** by Web Dev Simplified: The primary tutorial I followed for the core implementation logic and structure. All credit for the foundational concepts goes to this comprehensive guide.
+* **[OAuth 2.0 and OpenID Connect in Plain English](https://youtu.be/996OiexHze0?si=sSI5UcGFsq03aOX-)** by OktaDev: A highly recommended video that helped clarify the underlying principles and flow of OAuth 2.0 and OIDC, which was invaluable for understanding the "why" behind the security measures.

@@ -174,13 +174,13 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/50 font-mono;
   }
   body {
     @apply bg-background text-foreground;
   }
   .title {
-    @apply decoration-border/75 font-serif text-3xl font-bold underline decoration-2 underline-offset-8;
+    @apply decoration-border/75 text-3xl font-bold underline decoration-2 underline-offset-8;
   }
 
   code:not(pre > code) {

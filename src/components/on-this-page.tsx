@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 interface LinkType {
   id: string;
   text: string;
+  level: "h2" | "h3";
 }
 const OnThisPage = ({ className }: { className: string }) => {
   const [links, setLinks] = useState<LinkType[]>();
@@ -23,9 +24,12 @@ const OnThisPage = ({ className }: { className: string }) => {
           const id = heading.id || `heading-${index}`;
           heading.id = id;
 
+          const level = heading.tagName.toLowerCase() as "h2" | "h3";
+
           return {
             id,
             text: heading.textContent || "",
+            level,
           };
         }
       );
@@ -64,7 +68,10 @@ const OnThisPage = ({ className }: { className: string }) => {
         <h1 className="text-lg font-bold">On This Page</h1>
         <ul className="mt-4">
           {links?.map((link) => (
-            <li className="pt-1" key={link.id}>
+            <li
+              className={cn(link.level === "h3" && "pl-3", "pt-1")}
+              key={link.id}
+            >
               <a
                 href={`#${link.id}`}
                 className={cn(
