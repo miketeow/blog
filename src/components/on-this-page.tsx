@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 import { cn, generateSlug } from "@/lib/utils";
@@ -12,7 +13,12 @@ interface LinkType {
 const OnThisPage = ({ className }: { className: string }) => {
   const [links, setLinks] = useState<LinkType[]>();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const pathname = usePathname();
   useEffect(() => {
+    // reset state when path changes
+    setLinks([]);
+    setActiveId(null);
+
     const extractHeading = () => {
       const mainContent = document.querySelector("main");
 
@@ -80,7 +86,13 @@ const OnThisPage = ({ className }: { className: string }) => {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [pathname]);
+
+  // Don't render the component if there are no links to show
+  if (!links || links.length === 0) {
+    return null;
+  }
+
   return (
     <div className={cn("hidden md:block", className)}>
       <div className="sticky top-20">

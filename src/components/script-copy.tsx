@@ -29,7 +29,6 @@ const ScriptCopy = (src: ScriptCopyProps) => {
           className="group relative mt-2"
         >
           <StyledPre>
-            {/* <StyledCode>{script}</StyledCode> */}
             <StyledCode>{script}</StyledCode>
           </StyledPre>
           <CopyButton src={script} className="absolute top-3 right-3" />

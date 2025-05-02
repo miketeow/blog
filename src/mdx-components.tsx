@@ -17,7 +17,7 @@ const components = {
   // Paragraphs
   p: ({ children, ...props }: ParagraphProps) => (
     <p
-      className="text-foreground mb-6 justify-evenly text-justify font-sans text-base leading-7"
+      className="text-foreground mb-6 font-sans text-base leading-7"
       {...props}
     >
       {children}
@@ -32,7 +32,7 @@ const components = {
   ),
   h2: ({ children, ...props }: H2Props) => (
     <h2
-      className="mt-10 mb-5 font-sans text-3xl leading-tight font-semibold text-gray-900 dark:text-gray-100"
+      className="mt-10 mb-5 font-mono text-3xl leading-tight font-semibold text-gray-900 dark:text-gray-100"
       {...props}
     >
       {children}
@@ -40,7 +40,7 @@ const components = {
   ),
   h3: ({ children, ...props }: H3Props) => (
     <h3
-      className="mt-8 mb-4 font-sans text-2xl leading-snug font-semibold text-gray-900 dark:text-gray-100"
+      className="mt-8 mb-4 font-mono text-2xl leading-snug font-semibold text-gray-900 dark:text-gray-100"
       {...props}
     >
       {children}
@@ -49,7 +49,7 @@ const components = {
   code: StyledCode,
   pre: StyledPre,
   a: ({ href, children, ...props }: AnchorProps) => {
-    const className = `text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200 font-sans`;
+    const className = `text-link hover:font-extrabold transition-colors duration-200 font-bold`;
     if (href?.startsWith("../")) {
       return (
         <Link href={href} className={className} {...props}>
@@ -101,42 +101,6 @@ const components = {
     >
       {children}
     </blockquote>
-  ),
-
-  // Table Components
-  table: ({ children, ...props }: ComponentPropsWithoutRef<"table">) => (
-    <table
-      className="mb-6 w-full border-collapse text-gray-700 dark:text-gray-300"
-      {...props}
-    >
-      {children}
-    </table>
-  ),
-  thead: ({ children, ...props }: ComponentPropsWithoutRef<"thead">) => (
-    <thead className="bg-gray-100 dark:bg-gray-800" {...props}>
-      {children}
-    </thead>
-  ),
-  tbody: ({ children, ...props }: ComponentPropsWithoutRef<"tbody">) => (
-    <tbody {...props}>{children}</tbody>
-  ),
-  tr: ({ children, ...props }: ComponentPropsWithoutRef<"tr">) => (
-    <tr className="border-b border-gray-200 dark:border-gray-700" {...props}>
-      {children}
-    </tr>
-  ),
-  th: ({ children, ...props }: ComponentPropsWithoutRef<"th">) => (
-    <th
-      className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-gray-100"
-      {...props}
-    >
-      {children}
-    </th>
-  ),
-  td: ({ children, ...props }: ComponentPropsWithoutRef<"td">) => (
-    <td className="px-4 py-2" {...props}>
-      {children}
-    </td>
   ),
 };
 

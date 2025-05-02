@@ -1,6 +1,7 @@
 import Date from "@/components/date";
 import ScriptCopy from "@/components/script-copy";
 import Tag from "@/components/tag";
+import InlineCode from "@/components/inline-code";
 import { formatDate } from "@/lib/utils";
 
 export const metadata = {
@@ -42,9 +43,9 @@ This post documents a basic template for a Next.js project that I am personally 
 
 ## Setup
 
-The `eslint-config-prettier` package helps ESLint and Prettier work together by disabling any ESLint rules that might conflict with Prettier.
+The <InlineCode code={"eslint-config-prettier"}/> package helps ESLint and Prettier work together by disabling any ESLint rules that might conflict with Prettier.
 
-Create a `.prettierrc.json` file, modify the existing `eslint.config.mjs`, and create a hidden `.vscode` folder containing a `settings.json` file. This setup enables automatic code formatting and import sorting in VS Code on save.
+Create a <InlineCode code={".prettierrc.json"}/> file, modify the existing <InlineCode code={"eslint.config.mjs"}/>, and create a hidden <InlineCode code={".vscode"}/> folder containing a <InlineCode code={"settings.json"}/> file. This setup enables automatic code formatting and import sorting in VS Code on save.
 
 Here are the configurations for Prettier, ESLint, and VS Code settings:
 
@@ -114,9 +115,9 @@ const eslintConfig = [
 
 ## Dark Mode
 
-Dark mode is a common feature in modern projects. I use the standard `shadcn/ui` solution, following the instructions from the [shadcn/ui documentation](https://ui.shadcn.com/docs/dark-mode). The main difference is that I created a `provider.tsx` file where I set all the necessary attributes for `next-themes`, instead of setting them directly in the main `layout.tsx`. This approach is useful for projects requiring multiple providers, as they can all be consolidated within this single `provider.tsx` file, keeping the main `layout.tsx` minimal. Remember to still set the `suppressHydrationWarning` attribute on the `html` tag in the main `layout.tsx`.
+Dark mode is a common feature in modern projects. I use the standard [shadcn/ui dark mode](https://ui.shadcn.com/docs/dark-mode) solution. The main difference is that I created a <InlineCode code={"provider.tsx"}/> file where I set all the necessary attributes for <InlineCode code={"next-themes"}/>, instead of setting them directly in the main <InlineCode code={"layout.tsx"}/>. This approach is useful for projects requiring multiple providers, as they can all be consolidated within this single <InlineCode code={"provider.tsx"}/> file, keeping the main <InlineCode code={"layout.tsx"}/> minimal. Remember to still set the <InlineCode code={"suppressHydrationWarning"}/> attribute on the <InlineCode code={"html"}/> tag in the main <InlineCode code={"layout.tsx"}/>.
 
-Another difference is the theme toggle component. Instead of a dropdown or a standard button, I use the `Toggle` component from `shadcn/ui`. It only switches between dark and light modes (no system mode option) with a single click. This is my personal preference, and you can customize it as needed. I also slightly modified the default `Toggle` style to remove the background color that indicates its `data-[state=on]` status.
+Another difference is the theme toggle component. Instead of a dropdown or a standard button, I use the toggle component from [shadcn/ui toggle](https://ui.shadcn.com/docs/components/toggle). It only switches between dark and light modes without system mode option with a single click. This is my personal preference, and you can customize it as needed. I also slightly modified the default toggle style to remove the background color that indicates its <InlineCode code={"data-[state=on]"}/> status.
 
 <ScriptCopy
   scripts={[
@@ -173,9 +174,9 @@ data-[state=on]:bg-accent data-[state=on]:text-accent-foreground`
 
 ## Environment Variable
 
-While the standard way of declaring and using environment variables works, certain libraries or packages can sometimes have issues recognizing variable types, forcing workarounds like appending a `!` assertion in TypeScript. Typographical errors in variable names are also a common pitfall.
+While the standard way of declaring and using environment variables works, certain libraries or packages can sometimes have issues recognizing variable types, forcing workarounds like appending a '!' assertion in TypeScript. Typographical errors in variable names are also a common pitfall.
 
-To address this, I install `@t3-oss/env-nextjs` and `zod`. This setup provides type-safe environment variables, significantly reducing errors and offering helpful IntelliSense auto-completion when accessing variables. I haven't customized the setup significantly; I split the configuration into `server.ts` and `client.ts` files but currently only use the `server.ts` file. For configuration details, you can follow the official [T3 Env documentation](https://env.t3.gg/docs/nextjs).
+To address this, I install <InlineCode code={"@t3-oss/env-nextjs"}/> and [zod](https://zod.dev/). This setup provides type-safe environment variables, significantly reducing errors and offering helpful IntelliSense auto-completion when accessing variables. I haven't customized the setup significantly; I split the configuration into <InlineCode code={"server.ts"}/> and <InlineCode code={"client.ts"}/> files but currently only use the <InlineCode code={"server.ts"}/> file. For configuration details, you can follow the official [T3 Env documentation](https://env.t3.gg/docs/nextjs).
 
 ## Docker Database
 
