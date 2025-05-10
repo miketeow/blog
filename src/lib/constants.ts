@@ -5,7 +5,7 @@ export const navLinks = [
 ];
 
 export const tags = [
-  "js",
+  "javascript",
   "mdx",
   "nextjs",
   "blog",
@@ -19,5 +19,7 @@ export const tags = [
   "c",
   "book",
   "review",
+  "vite",
+  "react",
 ] as const;
 export type TagType = (typeof tags)[number];

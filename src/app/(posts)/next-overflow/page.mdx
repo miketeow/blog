@@ -1,0 +1,26 @@
+import Date from "@/components/date";
+import ScriptCopy from "@/components/script-copy";
+import InlineCode from "@/components/inline-code";
+import Tag from "@/components/tag";
+import { formatDate } from "@/lib/utils";
+
+export const metadata = {
+  title: "Next-Overflow Project",
+  publishedAt: "2025-05-04T00:00:00Z",
+  tags: ["nextjs","react","project"],
+  draft: true,
+};
+
+# Next-Overflow Project
+
+<Date date={metadata.publishedAt} />
+<Tag tags={metadata.tags} />
+
+## Introduction
+
+This project follow the ultimate next js course by jsmastery pro. This post documents the changes I made.
+
+## Setup
+Follow the setup, at the time of writing, most modules has been updated to accomodate tailwind v4.
+
+For the font, you can simply import inter and space-grotesk from <InlineCode code={"next/font/google"}/> as well, and you don't have to explicitly mentioned the font-weight because they are variable fonts, based on [next js font documentation](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts#google-fonts).

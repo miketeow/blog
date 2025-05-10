@@ -11,7 +11,7 @@ export function generateStaticParams() {
 export default async function Tag({ params }: { params: { tag: TagType } }) {
   const { tag } = await params;
   if (tags.indexOf(tag) == -1) notFound();
-  const posts = await getPostsByTags({ tag });
+  const posts = await getPostsByTags({ tag, includeDrafts: false });
 
   return (
     <main>

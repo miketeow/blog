@@ -1,0 +1,386 @@
+import Date from "@/components/date";
+import ScriptCopy from "@/components/script-copy";
+import InlineCode from "@/components/inline-code";
+import Tag from "@/components/tag";
+import { formatDate } from "@/lib/utils";
+
+export const metadata = {
+  title: "Neetcode Blind 75",
+  publishedAt: "2025-05-04T00:00:00Z",
+  tags: ["leetcode","rust","javascript","c","project"],
+};
+
+# Neetcode Challenge
+
+<Date date={metadata.publishedAt} />
+<Tag tags={metadata.tags} />
+
+## Introduction
+
+This post documents my process, attempts, and solutions while tackling challenges from the [Neetcode Blind 75](https://neetcode.io/practice) list, specifically focusing on implementations in JavaScript, Rust, and C. It also includes my understanding and interpretation of the problems and the different approaches taken.
+
+## Contain Duplicate
+
+Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.
+
+### javascript
+
+**first attempt**
+
+My initial thought was to leverage JavaScript's built-in set object. A <InlineCode code={"Set"}/> only stores unique values. So, I created a new <InlineCode code={"Set"}/> from the input array <InlineCode code={"num"}/> and compared the <InlineCode code={"Set"}/>'s size to the original array's length. If the sizes are different, it means some elements were removed during the <InlineCode code={"Set"}/> creation because they were duplicates, therefore the original array contains duplicates.
+
+```javascript
+let num1 = [1, 2, 3, 4, 4];
+let num2 = [1, 2, 3, 4, 5];
+
+var containsDuplicate = function (nums) {
+  let numSets = new Set(nums);
+
+  return numSets.size != nums.length;
+};
+
+console.log(containsDuplicate(num1));
+console.log(containsDuplicate(num2));
+```
+**second attempt**
+
+While the first approach conceptually works, a potentially more efficient approach, especially if duplicates appear early in a large array, is to iterate through the numbers one by one. We can use a <InlineCode code={"Set"}/> to keep track of the numbers encountered so far. For each number, we check if it's already present in the <InlineCode code={"Set"}/>. If it is, we've found a duplicate and can immediately return true. Otherwise, we add the number to the <InlineCode code={"Set"}/> and continue to the next element. If we finish iterating through the entire array without finding duplicates, we return false. This approach avoids creating the initial <InlineCode code={"Set"}/> from the whole array at once and allows for early termination.
+
+```javascript
+let num1 = [1, 2, 3, 4, 4];
+let num2 = [1, 2, 3, 4, 5];
+var containsDuplicate2 = function (nums) {
+  let numsSet = new Set();
+  for (num of nums) {
+    if (numsSet.has(num)) {
+      return true;
+    } else {
+      numsSet.add(num);
+    }
+  }
+  return false;
+};
+
+console.log(containsDuplicate2(num1));
+console.log(containsDuplicate2(num2));
+```
+### rust
+
+I applied the same logic as the second JavaScript approach, utilizing Rust's <InlineCode code={"HashSet"}/> from the standard library <InlineCode code={"std::collections::HashSet"}/>. The process involves iterating through the input vector <InlineCode code={"Vec<i32>"}/>. For each number, we check if the <InlineCode code={"HashSet"}/> already contains it. If yes, return true. If not, insert the number into the <InlineCode code={"HashSet"}/>. If the loop completes without finding duplicates, return false.
+
+Based on my LeetCode submissions, this Rust solution achieved a runtime of around 10 ms, compared to approximately 17 ms for the JavaScript version. Notably, the memory usage was significantly lower: ~4 MB for Rust versus ~60 MB for JavaScript.
+
+```rust
+use std::collections::HashSet;
+
+fn contain_duplicate(nums:Vec<i32>)->bool {
+    let mut hash_nums = HashSet::new();
+    for num in nums {
+        if hash_nums.contains(&num){
+            return true;
+        }
+        hash_nums.insert(num);
+    }
+    return false;
+}
+
+fn main(){
+    let v1:Vec<i32> = vec![1,2,3,4,5];
+    let v2:Vec<i32> = vec![1,2,3,4,4];
+
+    println!("{}",contain_duplicate(v1));
+    println!("{}",contain_duplicate(v2));
+
+}
+```
+
+### c
+
+**first attempt**
+
+My first C attempt was a straightforward brute-force approach using nested loops. The outer loop iterates from the first element, and the inner loop iterates through the subsequent elements, comparing <InlineCode code={"nums[i]"}/> with <InlineCode code={"nums[j]"}/> where <InlineCode code={"j > i"}/>. If a match is found, it returns true. While correct, this <InlineCode code={"O(n^2)"}/> approach is inefficient for large inputs. It passed most test cases but resulted in a "Time Limit Exceeded" **TLE** error on larger ones.
+
+Unlike JavaScript and Rust, standard C doesn't have a built-in hash set/map data structure readily available like <InlineCode code={"Set"}/> or <InlineCode code={"HashSet"}/>. Implementing one manually is possible but adds complexity.
+
+**second attempt**
+
+A more efficient approach in C involves sorting the array first. I used the standard library's <InlineCode code={"qsort"}/> function for this. Once the array is sorted, any duplicate elements will be adjacent to each other. Therefore, I only need to iterate through the sorted array once, comparing each element <InlineCode code={"nums[i]"}/> with its immediate predecessor <InlineCode code={"nums[i-1]"}/>. If <InlineCode code={"nums[i] == nums[i-1]"}/> for any i, a duplicate exists, and we return true. If the loop finishes without finding adjacent identical elements, we return false. This approach has a time complexity dominated by the sort typically <InlineCode code={"O(nlogn)"}/>, which is much better than the <InlineCode code={"O(n^2)"}/> brute-force method.
+
+```C
+#include <stdio.h>
+#include <stdbool.h>
+
+// comparison function for qsort
+int compare(const void *pa, const void *pb){
+    int a = *((int *)pa);
+    int b = *((int *)pb);
+
+    return a - b;
+}
+
+bool containsDuplicate(int *nums, int numsSize ){
+    if (numsSize <= 1) {
+        return false;
+    }
+
+    qsort(nums, numsSize, sizeof(int), compare);
+
+    for (int i = 1; i < numsSize; i ++){
+        if(nums[i] == nums[i - 1]){
+            return true;
+        }
+    }
+    return false;
+}
+
+int main(void){
+    int numsArray[] = {1,2,3,4,4};
+    if(containsDuplicate(numsArray,5)){
+        printf("true\n");
+    } else {
+        printf("false\n");
+    }
+};
+```
+## Valid Anagram
+
+Given two strings **s** and **t**, return <InlineCode code={"true"}/> if **t** is an anagram of **s**, and <InlineCode code={"false"}/> otherwise. An anagram is a word or phrase formed by rearranging the letters of a different word or phrase, typically using all the original letters exactly once.
+
+### javascript
+
+**first attempt**
+
+If two strings are anagrams, they are just rearrangements of the same set of characters. This implies they must have the same length and contain the exact same characters with the same frequencies.
+
+I convert each string into an array of its characters using <InlineCode code={"split('')"}/>, then sort both arrays alphabetically using <InlineCode code={"sort()"}/>, finally i compare the sorted arrays.
+
+A direct comparison of arrays in JavaScript <InlineCode code={"arr1 === arr2"}/> only checks whether if they are the exact same object in memory, not if they contain the same elements.
+
+To compare the contents, a common way is to convert both sorted arrays into strings using <InlineCode code={"JSON.stringify()"}/> . If these **JSON** strings are identical, it means the sorted arrays were identical, and thus the original strings are anagrams. While convenient, note that <InlineCode code={"JSON.stringify()"}/> might have performance implications for very large arrays compared to a manual element-by-element comparison loop.
+
+```javascript
+let first = "rat";
+let second = "tar";
+
+const isAnagram = (a, b) => {
+  if (a.length != b.length) return false;
+
+  let arr1 = a.split("").sort();
+  let arr2 = b.split("").sort();
+
+  return JSON.stringify(arr1) == JSON.stringify(arr2);
+};
+
+console.log(isAnagram(first, second));
+```
+
+**second attempt**
+
+A second, often more time-efficient, solution uses frequency counting. This approach avoids sorting which typically takes <InlineCode code={"O(N log N)"}/> time.
+
+1. **Initial Length Check**: First, check if the lengths of the two strings **a** and **b** are different. If they are, they cannot be anagrams, so return false immediately. This is an important optimization.
+
+2. **Count Characters in First String**: Create an object -- acting as a hash map or frequency map to store the counts of each character in the first string **a**. Iterate through **a**, incrementing the count for each character.
+
+3. **Decrement Counts Using Second String**: Iterate through the second string **b**. For each character in **b**, check if the character exists as a key in the frequency map and has a count greater than zero <InlineCode code={"(count[char])"}/> . If not <InlineCode code={"(!count[char])"}/>, it means **b** contains a character not present in **a** or has an excess occurrence of that character. Return <InlineCode code={"false"}/>.If the character exists and the count is positive, decrement its count in the map <InlineCode code={"(count[char]--)"}/> .
+
+4. **Final Result**: If the loop successfully completes for all characters in b without returning false, it means every character in **b** had a corresponding character in a with a matching frequency. Since we already verified the lengths are equal, the strings must be anagrams. Return <InlineCode code={"true"}/>.
+
+The line <InlineCode code={"count[char] = (count[char] || 0) + 1;"}/>  is used to update the frequency map. The <InlineCode code={"count[char] || 0"}/> part handles the case where a character is encountered for the first time. If <InlineCode code={"count[char]"}/> doesn't exist yet, it evaluates to undefined. The logical OR || operator then returns the right-hand operand, ensuring the count is correctly initialized to <InlineCode code={"0 + 1 = 1"}/>. Without the <InlineCode code={"|| 0"}/> part, <InlineCode code={"undefined + 1"}/> would result in <InlineCode code={"NaN"}/>.
+
+```javascript
+let first = "rat";
+let second = "tar";
+
+const isAnagram2 = (a, b) => {
+  if (a.length != b.length) return false;
+
+  const count = {};
+  for (const char of a) {
+    count[char] = (count[char] || 0) + 1;
+  }
+
+  for (const char of b) {
+    if (!count[char]) return false;
+    count[char]--;
+  }
+  return true;
+};
+
+console.log(isAnagram2(first, second));
+```
+
+### rust
+
+The Rust solutions follow similar logic to the frequency counting approach seen previously, utilizing Rust's standard library features.
+
+Use this <InlineCode code={"main"}/> function to test the solutions:
+
+```rust
+use std::collections::HashMap;
+fn main() {
+    let s1: String = String::from("abcd");
+    let t1: String = String::from("cbad");
+    let s2: String = String::from("car");
+    let t2: String = String::from("rat");
+
+    println!("Testing HashMap version: ");
+    if is_anagram(s1.clone(), t1.clone()) {
+      println!("'{}' and '{}' is anagram",s1,t1);
+    } else {
+      println!("'{}' and '{}' is not an anagram",s1,t1);
+    }
+
+    if is_anagram(s2.clone(), t2.clone()) {
+      println!("'{}' and '{}' is anagram",s2,t2);
+    } else {
+      println!("'{}' and '{}' is not an anagram",s2,t2);
+    }
+
+    println!("\nTesting Array version: ");
+
+    if is_anagram_array(s1.clone(), t1.clone()) {
+      println!("'{}' and '{}' is anagram",s1,t1);
+    } else {
+      println!("'{}' and '{}' is not an anagram",s1,t1);
+    }
+
+    if is_anagram_array(s2.clone(), t2.clone()) {
+      println!("'{}' and '{}' is anagram",s2,t2);
+    } else {
+      println!("'{}' and '{}' is not an anagram",s2,t2);
+    }
+}
+```
+
+**first attempt**
+
+```rust
+fn is_anagram(s: String, t: String) -> bool{
+    if s.len() != t.len() {
+        return false;
+    } else {
+        let mut char_count:HashMap<char, i32> = HashMap::new();
+        for c in s.chars(){
+            *char_count.entry(c).or_insert(0) += 1;
+        }
+
+        for c in t.chars(){
+            if let Some(count) = char_count.get_mut(&c){
+                *count -= 1;
+                if *count < 0 {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+```
+
+This approach uses a <InlineCode code={"HashMap"}/> to store character frequencies, it is the same as the second Javascript solution. This achieved a very fast 2ms runtime.In Rust, <InlineCode code={"char"}/> represents a unicode scalar value. It's a 4-byte type capable of holding any valid unicode value including emoji and symbols. This differ from C, where <InlineCode code={"char"}/> is typically a single byte representing an ASCII character.
+
+The <InlineCode code={"s.chars()"}/> method on <InlineCode code={"String"}/> returns an iterator <InlineCode code={"std::str::Chars"}/> that yields each unicode value of the string sequentially. It correctly handles multi-byte unicode characters.
+
+While JavaScript's <InlineCode code={"for...of"}/> loop on a tring also iterates over characters. Rust gives more explicit control. For instance, if you need to work with raw bytes for UTF-8 processing, you could use <InlineCode code={"s.as_bytes()"}/> which returns an iterator over the **u8** bytes.
+
+```javascript
+// JavaScript equivalent iteration
+let test = "hello";
+
+for (c of test) {
+  console.log(c);
+}
+// 'h','e','l','l','o'
+```
+
+<InlineCode code={"*char_count.entry(c).or_insert(0) += 1;"}/> is an idiomatic and efficient way to update the count in a <InlineCode code={"HashMap"}/>. The <InlineCode code={"entry(c)"}/> looks for the key **c**. It returns an <InlineCode code={"Entry"}/> enum, either <InlineCode code={"Occupied"}/> or <InlineCode code={"Vacant"}/>.
+
+If the entry was <InlineCode code={"Vacant"}/> - the key **c** was not found, <InlineCode code={".or_insert(0)"}/> inserts the provided default value 0 and returns a mutable reference <InlineCode code={"&mut i32"}/> to this new value. If the entry was <InlineCode code={"Occupied"}/>, it returns a mutable reference to the existing value.
+
+The asterisk in <InlineCode code={"*... += 1"}/> dereferences the mutable reference, giving access to the <InlineCode code={"i32"}/> count itself, which is then incremented by 1.
+
+
+<InlineCode code={"if let Some(count) = char_count.get_mut(&c)"}/> check and update counts.
+
+<InlineCode code={"char_count.get_mut(&c)"}/> attempts to get a mutable reference to the value associated with key **c**. It returns an <InlineCode code={"Option<&mut i32>"}/> - <InlineCode code={"Some(&mut value)"}/> if the key exists, <InlineCode code={"None"}/> otherwise.
+
+<InlineCode code={"if let Some(count) = ..."}/> is concise pattern matching. If <InlineCode code={"get_mut"}/> returns <InlineCode code={"Some(value)"}/> , the pattern matches, the mutable reference <InlineCode code={"value"}/> is bound to the new variable <InlineCode code={"count"}/>, and then the code block executes.
+
+All these avoid needing a more verbose `match` statement like:
+
+<ScriptCopy
+scripts={[
+{
+packageName:`match`,
+script:`match char_count.get_mut(&c) {
+    Some(count) => {
+        *count += 1;
+    }
+    None => {
+        // Do nothing if the key doesn't exist
+    }
+}
+`
+},
+{
+packageName:`if let Some`,
+script:`if let Some(count) = char_count.get_mut(&c){
+    //Do something
+    *count -= 1;
+}`
+}
+]}
+/>
+
+The <InlineCode code={"if let Some(...) = {...} else {...}"}/> pattern is very common in Rust when you need to
+- check if a key existed
+- modify the associated value if existed
+- handle the case where the key doesn't exist separately
+
+**second attempt**
+
+While the <InlineCode code={"HashMap"}/> approach works well, we can achieve better performance because this problem has a constraint that specifes that the strings contain only lowercase letter a to z, we can then use a fixed size array of 26 elements as a highly optimised frequency map.
+
+```rust
+fn is_anagram_array(s: String, t: String) -> bool {
+    if s.len() != t.len() {
+        return false;
+    } else {
+        let mut char_count = [0;26];
+
+        for c in s.chars(){
+            char_count[(c as u8 - b'a') as usize] += 1;
+        }
+
+        for c in t.chars(){
+            char_count[(c as u8 - b'a') as usize] -= 1;
+            if char_count[(c as u8 - b'a') as usize] < 0 {
+                return false
+            }
+        }
+        return true;
+    }
+}
+```
+**array vs <InlineCode code={"HashMap"}/> performance**
+
+- array indexing <InlineCode code={"char_count[index]"}/> is a direct memory access operation and is truly O(1) with extremely low overhead.
+
+- <InlineCode code={"HashMap"}/> operations <InlineCode code={"entry"}/> and <InlineCode code={"get_mut"}/> have an average time complexity of O(1) but involve more steps: hashing the key, mapping the hash to an internal bucket, and potentially resolving hash collisions.
+
+- when the keyset is small, known, and maps directly to indices like a to z mapping to 0 to 25, an array significantly outperforms a <InlineCode code={"HashMap"}/> due to low constant factor and better CPU cache utilisation.
+
+Array Initialisation <InlineCode code={"let mut char_count = [0;26];"}/> creates a stack-allocated array named <InlineCode code={"char_count"}/> with 26 elements, each initialised to the value 0. The type is inferred as <InlineCode code={"[i32;26]"}/>
+
+<InlineCode code={"char_count[(c as u8 - b'a') as usize] += 1;"}/> converts a character **c** to its corresponding array index 0 to 25
+
+- <InlineCode code={"c as u8"}/> casts the <InlineCode code={"char c"}/> to its **u8** byte representation. For 'a' through 'z', this yields their ASCII values 97 to 122.
+
+- <InlineCode code={"b'a'"}/> is the byte literal for the character 'a', equivalent to <InlineCode code={"a as u8"}/> which is 97.
+
+- <InlineCode code={"c as u8 - b'a'"}/> subtracts the ASCII value of 'a' from the character's ASCII value. This maps <InlineCode code={"a -> 0, b -> 1, ... z -> 25"}/>. The result is a <InlineCode code={"u8"}/>
+
+- <InlineCode code={"... as usize"}/> casts the <InlineCode code={"u8"}/> result 0 to 25 to <InlineCode code={"usize"}/>. <InlineCode code={"usize"}/> is Rust's archirecrure-dependent unsigned interger type used for indexing. This <InlineCode code={"usize"}/> value is then used to index into the <InlineCode code={"char_count"}/> array.
